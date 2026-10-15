@@ -3,8 +3,10 @@
 #
 #   ./install.sh [--port N]
 #
-# Or without a checkout (set DYMO_REPO to the git URL):
-#   curl -fsSL <raw install.sh URL> | DYMO_REPO=<git url> bash
+# Or without a checkout:
+#   curl -fsSL https://raw.githubusercontent.com/qixeo/dymo-linux-service/main/install.sh | bash
+#
+# DYMO_REPO overrides the git URL that is cloned in that case.
 set -euo pipefail
 
 DEST="${DYMO_LINUX_HOME:-$HOME/.local/share/dymo-linux-service}"
@@ -20,11 +22,11 @@ say "Installing packages (sudo): ${PKGS[*]}"
 sudo apt-get install -y "${PKGS[@]}"
 
 # Locate the service script: next to this file, else clone DYMO_REPO.
+DYMO_REPO="${DYMO_REPO:-https://github.com/qixeo/dymo-linux-service.git}"
 SRC=""
 if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "$(dirname "${BASH_SOURCE[0]}")/dymo-linux-service.py" ]; then
   SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 else
-  [ -n "${DYMO_REPO:-}" ] || die "dymo-linux-service.py not found next to the installer; set DYMO_REPO to the git URL"
   command -v git >/dev/null || sudo apt-get install -y git
   SRC="$(mktemp -d)"
   trap 'rm -rf "$SRC"' EXIT

@@ -23,16 +23,18 @@ One Python file, standard library plus Pillow and `qrcode`.
 
 Tested path: Ubuntu / Debian, Chrome or Chromium, a USB LabelWriter.
 
-**One command** (from a checkout; installs the apt packages, copies the
-service to `~/.local/share/dymo-linux-service`, creates and trusts the
-certificate, and starts the systemd user service):
+**One command, no checkout needed:**
 
 ```bash
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/qixeo/dymo-linux-service/main/install.sh | bash
 ```
 
-Then add the LabelWriter as a printer if you haven't, and restart the browser.
-The manual steps are below.
+Or, from a checkout, `./install.sh`. Either way it installs the apt packages,
+copies the service to `~/.local/share/dymo-linux-service`, creates and trusts
+the certificate, and starts the systemd user service. Then add the LabelWriter
+as a printer if you haven't, and restart the browser.
+
+**Manual steps** (what the installer does):
 
 ```bash
 # 1. CUPS, the DYMO driver, Python deps, and certutil (to trust the certificate in Chrome)
