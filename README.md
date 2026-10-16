@@ -23,7 +23,7 @@ One Python file, standard library plus Pillow and `qrcode`.
 
 Tested path: Ubuntu / Debian, Chrome or Chromium, a USB LabelWriter.
 
-**One command, no checkout needed:**
+**Run:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qixeo/dymo-linux-service/main/install.sh | bash
@@ -34,7 +34,7 @@ copies the service to `~/.local/share/dymo-linux-service`, creates and trusts
 the certificate, and starts the systemd user service. Then add the LabelWriter
 as a printer if you haven't, and restart the browser.
 
-**Manual steps** (what the installer does):
+**Manual steps**:
 
 ```bash
 # 1. CUPS, the DYMO driver, Python deps, and certutil (to trust the certificate in Chrome)
@@ -77,14 +77,14 @@ above and accept the warning permanently.
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `dymo-linux-service.py` / `serve [--port N]` | run in the foreground (what the systemd unit runs) |
-| `install [--port N]` | certificate + Chrome trust + systemd user unit, started and enabled |
-| `trust [--regenerate]` | (re)import the certificate into every Chrome/Chromium NSS store found |
-| `printers` | the printers the service offers, with their CUPS state and USB presence |
-| `render LABEL.dymo OUT.png [--dpi N]` | render a label file to a PNG to check the layout |
-| `print LABEL.dymo [--printer NAME] [--copies N]` | print a label file through CUPS |
+| Command                                          | What it does                                                            |
+| ------------------------------------------------ | ----------------------------------------------------------------------- |
+| `dymo-linux-service.py` / `serve [--port N]`     | run in the foreground (what the systemd unit runs)                      |
+| `install [--port N]`                             | certificate + Chrome trust + systemd user unit, started and enabled     |
+| `trust [--regenerate]`                           | (re)import the certificate into every Chrome/Chromium NSS store found   |
+| `printers`                                       | the printers the service offers, with their CUPS state and USB presence |
+| `render LABEL.dymo OUT.png [--dpi N]`            | render a label file to a PNG to check the layout                        |
+| `print LABEL.dymo [--printer NAME] [--copies N]` | print a label file through CUPS                                         |
 
 Service management after install:
 
@@ -99,15 +99,15 @@ journalctl --user -u dymo-linux-service -f
 Environment variables; the systemd unit reads them from
 `~/.config/dymo-linux-service/env` (restart the service after editing).
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `DYMO_LINUX_PORT` | `41951` | listen port; DYMO clients scan 41951–41960 |
-| `DYMO_LINUX_PRINTERS` | `dymo` | which CUPS queues to offer: `dymo` (name, model or device URI mentions DYMO), `all`, or a comma-separated list of queue names |
-| `DYMO_LINUX_MEDIA` | auto | CUPS media name to print on. By default the queue's `PageSize` choice closest to the label is used (`w162h90` for the 30334 2¼"×1¼" label), falling back to `Custom.WxH` |
-| `DYMO_LINUX_ROTATE` | `0` | extra rotation in degrees (`0`/`90`/`180`/`270`) applied before printing, on top of the 90° a Landscape label gets |
-| `DYMO_LINUX_DPI` | `300` | print resolution (LabelWriters are 300 dpi) |
-| `DYMO_LINUX_FONT` | fontconfig's choice | font family used for every text object, e.g. `Liberation Sans` |
-| `DYMO_LINUX_DRY_RUN` | | `1`: keep the PDF and log the `lp` command instead of printing |
+| Variable              | Default             | Meaning                                                                                                                                                                  |
+| --------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DYMO_LINUX_PORT`     | `41951`             | listen port; DYMO clients scan 41951–41960                                                                                                                               |
+| `DYMO_LINUX_PRINTERS` | `dymo`              | which CUPS queues to offer: `dymo` (name, model or device URI mentions DYMO), `all`, or a comma-separated list of queue names                                            |
+| `DYMO_LINUX_MEDIA`    | auto                | CUPS media name to print on. By default the queue's `PageSize` choice closest to the label is used (`w162h90` for the 30334 2¼"×1¼" label), falling back to `Custom.WxH` |
+| `DYMO_LINUX_ROTATE`   | `0`                 | extra rotation in degrees (`0`/`90`/`180`/`270`) applied before printing, on top of the 90° a Landscape label gets                                                       |
+| `DYMO_LINUX_DPI`      | `300`               | print resolution (LabelWriters are 300 dpi)                                                                                                                              |
+| `DYMO_LINUX_FONT`     | fontconfig's choice | font family used for every text object, e.g. `Liberation Sans`                                                                                                           |
+| `DYMO_LINUX_DRY_RUN`  |                     | `1`: keep the PDF and log the `lp` command instead of printing                                                                                                           |
 
 Fonts: labels designed in DYMO Connect say "Helvetica". Linux maps that
 through fontconfig, usually to Nimbus Sans or Liberation Sans, which have the
@@ -161,12 +161,12 @@ Everything is under `https://127.0.0.1:41951/DYMO/DLS/Printing/`. Responses
 carry CORS headers for any origin, including Chrome's private/local network
 access preflight.
 
-| Endpoint | Body | Reply |
-|---|---|---|
-| `GET StatusConnected` | | `true` |
-| `GET GetPrinters` | | `<Printers><LabelWriterPrinter><Name>…</Name><ModelName>…</ModelName><IsConnected>True</IsConnected>…` |
-| `POST RenderLabel` | form: `labelXml`, `renderParamsXml`, `printerName` | JSON string of base64 PNG |
-| `POST PrintLabel` | form: `printerName`, `labelXml`, `printParamsXml` (`<Copies>`), `labelSetXml` | `true` |
+| Endpoint              | Body                                                                          | Reply                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET StatusConnected` |                                                                               | `true`                                                                                                 |
+| `GET GetPrinters`     |                                                                               | `<Printers><LabelWriterPrinter><Name>…</Name><ModelName>…</ModelName><IsConnected>True</IsConnected>…` |
+| `POST RenderLabel`    | form: `labelXml`, `renderParamsXml`, `printerName`                            | JSON string of base64 PNG                                                                              |
+| `POST PrintLabel`     | form: `printerName`, `labelXml`, `printParamsXml` (`<Copies>`), `labelSetXml` | `true`                                                                                                 |
 
 `Name` is the CUPS queue name; send it back as `printerName`. Errors are a
 `500` with a one-line message.
