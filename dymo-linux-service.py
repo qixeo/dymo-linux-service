@@ -70,6 +70,10 @@ MEDIA_TOLERANCE_PT = 8
 DYMO_USB_VENDOR = "0922"
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "dymo-linux-service"
 UNIT_NAME = "dymo-linux-service.service"
+# Nickname of the service certificate in the browsers' NSS stores.
+CERT_NICK = "dymo-linux-service"
+# Where install.sh copies the script (DYMO_LINUX_HOME overrides it there too).
+INSTALL_DIR = Path(os.environ.get("DYMO_LINUX_HOME", Path.home() / ".local" / "share" / "dymo-linux-service"))
 
 log = logging.getLogger("dymo-linux-service")
 
@@ -798,12 +802,22 @@ def trust_cert(cert: Path) -> int:
         db.mkdir(parents=True, exist_ok=True)
         subprocess.run(["certutil", "-d", f"sql:{db}", "-N", "--empty-password"], check=True)
         dbs = [db]
-    nick = "dymo-linux-service"
     for db in dbs:
-        subprocess.run(["certutil", "-d", f"sql:{db}", "-D", "-n", nick], capture_output=True)
-        subprocess.run(["certutil", "-d", f"sql:{db}", "-A", "-t", "C,,", "-n", nick, "-i", str(cert)], check=True)
+        subprocess.run(["certutil", "-d", f"sql:{db}", "-D", "-n", CERT_NICK], capture_output=True)
+        subprocess.run(["certutil", "-d", f"sql:{db}", "-A", "-t", "C,,", "-n", CERT_NICK, "-i", str(cert)], check=True)
         print(f"trusted {cert} in {db}")
     return len(dbs)
+
+
+def untrust_cert() -> None:
+    """Remove the certificate from every Chrome NSS store that has it."""
+    if shutil.which("certutil") is None:
+        print("certutil not found; remove the dymo-linux-service certificate from the browser by hand", file=sys.stderr)
+        return
+    for db in nss_databases():
+        r = subprocess.run(["certutil", "-d", f"sql:{db}", "-D", "-n", CERT_NICK], capture_output=True)
+        if r.returncode == 0:
+            print(f"removed the certificate from {db}")
 
 
 # ---------------------------------------------------------------------------
@@ -847,6 +861,17 @@ def install_unit(port: int) -> Path:
     return unit
 
 
+def remove_unit() -> None:
+    unit = Path.home() / ".config" / "systemd" / "user" / UNIT_NAME
+    if shutil.which("systemctl"):
+        subprocess.run(["systemctl", "--user", "disable", "--now", UNIT_NAME], capture_output=True)
+    if unit.exists():
+        unit.unlink()
+        print(f"removed {unit}")
+    if shutil.which("systemctl"):
+        subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -879,6 +904,28 @@ def cmd_install(args) -> None:
     print(f"installed {unit}; the service starts with your login.")
     print(f"Check it: https://127.0.0.1:{args.port}{SERVICE_PATH}/StatusConnected should show true.")
     print("Restart the browser once so it picks up the trusted certificate.")
+
+
+def cmd_uninstall(args) -> None:
+    remove_unit()
+    untrust_cert()
+    if args.keep_config:
+        print(f"kept {CONFIG_DIR}")
+    elif CONFIG_DIR.is_dir():
+        shutil.rmtree(CONFIG_DIR)
+        print(f"removed {CONFIG_DIR}")
+    # The copy install.sh made, and its ~/.local/bin link. A git checkout
+    # elsewhere is left alone.
+    installed = INSTALL_DIR / "dymo-linux-service.py"
+    link = Path.home() / ".local" / "bin" / "dymo-linux-service"
+    if link.is_symlink() and link.resolve() == installed.resolve():
+        link.unlink()
+        print(f"removed {link}")
+    if installed.is_file():
+        shutil.rmtree(INSTALL_DIR)
+        print(f"removed {INSTALL_DIR}")
+    print("Uninstalled. Restart the browser; apt packages (cups, printer-driver-dymo, ...) were left installed.")
+    print("If you imported the certificate into Firefox, delete it there: Settings > Certificates > Authorities.")
 
 
 def cmd_trust(args) -> None:
@@ -926,6 +973,10 @@ def main(argv: Optional[List[str]] = None) -> None:
     p = sub.add_parser("install", help="create the certificate, trust it in Chrome, install + start the systemd user service")
     p.add_argument("--port", type=int, default=int(os.environ.get("DYMO_LINUX_PORT", DEFAULT_PORT)))
     p.set_defaults(func=cmd_install)
+
+    p = sub.add_parser("uninstall", help="stop and remove the systemd user service, the certificate and the installed copy")
+    p.add_argument("--keep-config", action="store_true", help=f"keep {CONFIG_DIR} (certificate and env file)")
+    p.set_defaults(func=cmd_uninstall)
 
     p = sub.add_parser("trust", help="(re)import the service certificate into Chrome's certificate store")
     p.add_argument("--regenerate", action="store_true", help="make a new certificate first")

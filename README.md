@@ -81,6 +81,7 @@ above and accept the warning permanently.
 | ------------------------------------------------ | ----------------------------------------------------------------------- |
 | `dymo-linux-service.py` / `serve [--port N]`     | run in the foreground (what the systemd unit runs)                      |
 | `install [--port N]`                             | certificate + Chrome trust + systemd user unit, started and enabled     |
+| `uninstall [--keep-config]`                      | stop and remove the service, untrust the certificate, delete the config and installed copy |
 | `trust [--regenerate]`                           | (re)import the certificate into every Chrome/Chromium NSS store found   |
 | `printers`                                       | the printers the service offers, with their CUPS state and USB presence |
 | `render LABEL.dymo OUT.png [--dpi N]`            | render a label file to a PNG to check the layout                        |
@@ -93,6 +94,19 @@ systemctl --user status dymo-linux-service
 systemctl --user restart dymo-linux-service
 journalctl --user -u dymo-linux-service -f
 ```
+
+## Uninstall
+
+```bash
+dymo-linux-service uninstall          # or ./dymo-linux-service.py uninstall from a checkout
+```
+
+This stops and removes the systemd user service, removes the certificate from
+Chrome's certificate stores, and deletes `~/.config/dymo-linux-service` and the
+copy in `~/.local/share/dymo-linux-service`. `--keep-config` keeps the
+certificate and `env` file. Restart the browser afterwards. The apt packages
+are left installed; if you imported the certificate into Firefox, delete it
+there (Settings → Certificates → Authorities).
 
 ## Configuration
 
